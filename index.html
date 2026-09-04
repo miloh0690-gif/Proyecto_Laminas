@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Acrílicos · Control de Inventario</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0c0c0e">
+<style>
+  :root{
+    --bg:#0c0c0e;
+    --panel:#151517;
+    --glass:rgba(255,255,255,0.045);
+    --glass-border:rgba(255,255,255,0.09);
+    --red:#e0202c;
+    --red-dim:#7a1119;
+    --gold:#cfa646;
+    --text:#f2f1ee;
+    --text-dim:#9a9a9f;
+    --ok:#3ecf7e;
+    --warn:#e0a72c;
+    --danger:#e0202c;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(224,32,44,0.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(207,166,70,0.06), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    min-height:100%;
+    padding-bottom:84px;
+  }
+  h1,h2,h3{font-family:'Barlow Condensed','Inter',sans-serif; letter-spacing:0.01em; margin:0;}
+  ::selection{background:var(--red); color:#fff;}
+
+  /* App bar */
+  .appbar{
+    position:sticky; top:0; z-index:30;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 18px 14px;
+    background:linear-gradient(180deg, rgba(12,12,14,0.97), rgba(12,12,14,0.86) 70%, transparent);
+    backdrop-filter:blur(10px);
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{
+    width:34px; height:34px; border-radius:9px;
+    background:linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02));
+    border:1px solid var(--glass-border);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:15px; color:var(--red);
+  }
+  .brand-name{font-size:19px; font-weight:700; line-height:1;}
+  .brand-sub{font-size:11px; color:var(--text-dim); margin-top:2px;}
+  .status-pill{
+    display:flex; align-items:center; gap:6px;
+    font-size:11.5px; color:var(--text-dim);
+    padding:6px 10px; border-radius:100px;
+    background:var(--glass); border:1px solid var(--glass-border);
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--text-dim);}
+  .dot.live{background:var(--ok); box-shadow:0 0 0 3px rgba(62,207,126,0.18);}
+  .dot.err{background:var(--danger); box-shadow:0 0 0 3px rgba(224,32,44,0.18);}
+
+  main{max-width:640px; margin:0 auto; padding:4px 16px 24px;}
+  .view{display:none; animation:fadein .25s ease;}
+  .view.active{display:block;}
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  .section-title{font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim); margin:22px 2px 10px; font-weight:600; font-family:'Inter',sans-serif;}
+  .section-title:first-child{margin-top:8px;}
+
+  /* Glass card - literal acrylic-sheet motif */
+  .glass{
+    background:var(--glass);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius);
+    backdrop-filter:blur(14px);
+    position:relative;
+    overflow:hidden;
+  }
+  .glass::before{
+    content:'';
+    position:absolute; top:0; left:-30%; width:40%; height:100%;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,0.05), transparent);
+    pointer-events:none;
+  }
+
+  /* KPI row */
+  .kpis{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .kpi{padding:16px; }
+  .kpi-label{font-size:11.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em;}
+  .kpi-value{font-family:'Barlow Condensed',sans-serif; font-size:30px; font-weight:700; margin-top:4px;}
+  .kpi-value.red{color:var(--red);}
+  .kpi-value.gold{color:var(--gold);}
+
+  /* Stock list */
+  .stock-item{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; margin-bottom:9px;
+  }
+  .stock-info{display:flex; flex-direction:column; gap:3px;}
+  .stock-name{font-weight:600; font-size:15px;}
+  .stock-meta{font-size:12.5px; color:var(--text-dim);}
+  .stock-right{text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;}
+  .stock-count{font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:700;}
+  .stock-tag{font-size:10.5px; padding:2px 8px; border-radius:100px; font-weight:600; letter-spacing:.02em;}
+  .stock-tag.ok{color:var(--ok); background:rgba(62,207,126,0.12);}
+  .stock-tag.low{color:var(--warn); background:rgba(224,167,44,0.14);}
+  .stock-tag.out{color:var(--danger); background:rgba(224,32,44,0.14);}
+
+  /* Forms */
+  label{display:block; font-size:12.5px; color:var(--text-dim); margin:14px 2px 6px;}
+  label:first-child{margin-top:0;}
+  select, input[type=number], input[type=text], input[type=date]{
+    width:100%; padding:13px 14px; border-radius:11px;
+    background:rgba(255,255,255,0.04); border:1px solid var(--glass-border);
+    color:var(--text); font-size:15px; font-family:inherit;
+    appearance:none; -webkit-appearance:none;
+  }
+  select:focus, input:focus{outline:2px solid var(--red); outline-offset:0; border-color:transparent;}
+  .toggle-row{display:flex; gap:8px; margin-top:6px;}
+  .toggle-opt{
+    flex:1; text-align:center; padding:12px; border-radius:11px;
+    border:1px solid var(--glass-border); background:rgba(255,255,255,0.03);
+    font-size:13.5px; font-weight:600; color:var(--text-dim); cursor:pointer;
+    transition:all .15s ease;
+  }
+  .toggle-opt.active{border-color:var(--red); color:#fff; background:rgba(224,32,44,0.14);}
+  .toggle-opt.active.sin{border-color:var(--gold); background:rgba(207,166,70,0.14); color:#fff;}
+
+  .btn{
+    display:block; width:100%; text-align:center; padding:15px; margin-top:20px;
+    border-radius:12px; border:none; font-size:15.5px; font-weight:700;
+    background:var(--red); color:#fff; cursor:pointer;
+    letter-spacing:.01em;
+  }
+  .btn:active{transform:scale(0.99);}
+  .btn:disabled{opacity:.45;}
+  .btn.secondary{background:transparent; border:1px solid var(--glass-border); color:var(--text); font-weight:600;}
+  .btn.gold{background:var(--gold); color:#1a1204;}
+
+  .total-preview{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-top:18px; padding:14px 16px; border-radius:11px;
+    background:rgba(255,255,255,0.04); border:1px solid var(--glass-border);
+  }
+  .total-preview .label{font-size:13px; color:var(--text-dim);}
+  .total-preview .amount{font-family:'Barlow Condensed',sans-serif; font-size:28px; font-weight:700; color:var(--red);}
+
+  .msg{margin-top:14px; padding:12px 14px; border-radius:10px; font-size:13.5px; display:none;}
+  .msg.show{display:block;}
+  .msg.ok{background:rgba(62,207,126,0.12); color:var(--ok); border:1px solid rgba(62,207,126,0.25);}
+  .msg.error{background:rgba(224,32,44,0.12); color:#ff8b90; border:1px solid rgba(224,32,44,0.25);}
+
+  /* Sales history rows */
+  .sale-row{padding:13px 16px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;}
+  .sale-left{display:flex; flex-direction:column; gap:3px;}
+  .sale-prod{font-size:14px; font-weight:600;}
+  .sale-date{font-size:11.5px; color:var(--text-dim);}
+  .sale-right{text-align:right;}
+  .sale-total{font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:700;}
+  .sale-type{font-size:10px; padding:2px 7px; border-radius:100px; margin-top:3px; display:inline-block;}
+  .sale-type.con{color:var(--red); background:rgba(224,32,44,0.12);}
+  .sale-type.sin{color:var(--gold); background:rgba(207,166,70,0.12);}
+
+  .empty{padding:36px 20px; text-align:center; color:var(--text-dim); font-size:14px;}
+  .empty-icon{font-size:28px; margin-bottom:8px; opacity:.6;}
+
+  /* Report */
+  .report-split{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;}
+  .report-card{padding:16px;}
+  .report-card .label{font-size:12px; color:var(--text-dim);}
+  .report-card .val{font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:700; margin-top:4px;}
+  .prod-row{display:flex; justify-content:space-between; padding:11px 16px; font-size:13.5px; border-bottom:1px solid var(--glass-border);}
+  .prod-row:last-child{border-bottom:none;}
+  .prod-row .qty{color:var(--text-dim);}
+
+  /* Bottom nav */
+  .navbar{
+    position:fixed; bottom:0; left:0; right:0; z-index:40;
+    display:flex; justify-content:center;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    background:linear-gradient(0deg, rgba(12,12,14,0.98), rgba(12,12,14,0.9) 70%, transparent);
+    backdrop-filter:blur(10px);
+  }
+  .nav-inner{
+    display:flex; gap:2px; width:100%; max-width:640px;
+    background:var(--panel); border:1px solid var(--glass-border);
+    border-radius:16px; padding:5px;
+  }
+  .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:9px 4px; border-radius:12px; background:none; border:none;
+    color:var(--text-dim); font-size:10.5px; font-weight:600; cursor:pointer;
+    font-family:inherit;
+  }
+  .nav-btn svg{width:20px; height:20px;}
+  .nav-btn.active{color:#fff; background:rgba(224,32,44,0.16);}
+  .nav-btn.active svg{stroke:var(--red);}
+
+  .fade-list > *{animation:fadein .2s ease both;}
+
+  @media (min-width:640px){
+    main{padding-top:8px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <div class="brand">
+    <div class="brand-mark">A</div>
+    <div>
+      <div class="brand-name">Láminas Acrílicas</div>
+      <div class="brand-sub">Control de inventario</div>
+    </div>
+  </div>
+  <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">Conectando…</span></div>
+</div>
+
+<main>
+
+  <!-- ==================== DASHBOARD ==================== -->
+  <section class="view active" id="view-dashboard">
+    <div class="section-title">Resumen de hoy</div>
+    <div class="kpis">
+      <div class="glass kpi">
+        <div class="kpi-label">Vendido hoy</div>
+        <div class="kpi-value red" id="kpiHoyTotal">Bs 0</div>
+      </div>
+      <div class="glass kpi">
+        <div class="kpi-label">Láminas vendidas</div>
+        <div class="kpi-value gold" id="kpiHoyUnidades">0</div>
+      </div>
+    </div>
+
+    <div class="section-title">Stock disponible</div>
+    <div id="stockList" class="fade-list">
+      <div class="empty">Cargando inventario…</div>
+    </div>
+  </section>
+
+  <!-- ==================== VENDER ==================== -->
+  <section class="view" id="view-vender">
+    <div class="section-title">Registrar venta</div>
+    <div class="glass" style="padding:18px;">
+      <label for="selProducto">Producto</label>
+      <select id="selProducto"></select>
+
+      <label>Tipo de venta</label>
+      <div class="toggle-row">
+        <div class="toggle-opt active" data-tipo="Con Factura" id="tipoCon">Con factura</div>
+        <div class="toggle-opt sin" data-tipo="Sin Factura" id="tipoSin">Sin factura</div>
+      </div>
+
+      <label for="inpCantidad">Cantidad de láminas</label>
+      <input type="number" id="inpCantidad" min="1" value="1" inputmode="numeric">
+
+      <label for="inpPrecio">Precio unitario (Bs)</label>
+      <input type="number" id="inpPrecio" min="0" step="0.01">
+
+      <label for="inpNotas">Notas (opcional — cliente, referencia, etc.)</label>
+      <input type="text" id="inpNotas" placeholder="Ej. Cliente: Juan Pérez">
+
+      <div class="total-preview">
+        <span class="label">Total a cobrar</span>
+        <span class="amount" id="totalPreview">Bs 0</span>
+      </div>
+
+      <button class="btn" id="btnRegistrarVenta">Registrar venta y descontar stock</button>
+      <div class="msg" id="ventaMsg"></div>
+    </div>
+
+    <div class="section-title">Últimas ventas</div>
+    <div id="ventasRecientes" class="fade-list">
+      <div class="empty">Sin ventas todavía.</div>
+    </div>
+  </section>
+
+  <!-- ==================== REPORTES ==================== -->
+  <section class="view" id="view-reportes">
+    <div class="section-title">Reporte de ventas</div>
+    <div class="glass" style="padding:16px;">
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label for="fDesde">Desde</label>
+          <input type="date" id="fDesde">
+        </div>
+        <div style="flex:1;">
+          <label for="fHasta">Hasta</label>
+          <input type="date" id="fHasta">
+        </div>
+      </div>
+      <button class="btn secondary" id="btnFiltrar">Filtrar</button>
+    </div>
+
+    <div class="report-split">
+      <div class="glass report-card">
+        <div class="label">Con factura</div>
+        <div class="val" id="repCon">Bs 0</div>
+      </div>
+      <div class="glass report-card">
+        <div class="label">Sin factura</div>
+        <div class="val" id="repSin">Bs 0</div>
+      </div>
+    </div>
+    <div class="glass report-card" style="margin-top:10px;">
+      <div class="label">Total del periodo</div>
+      <div class="val" id="repTotal" style="color:var(--red); font-size:30px;">Bs 0</div>
+    </div>
+
+    <div class="section-title">Ventas por producto</div>
+    <div class="glass" id="repPorProducto"></div>
+  </section>
+
+  <!-- ==================== INVENTARIO ==================== -->
+  <section class="view" id="view-inventario">
+    <div class="section-title">Ajustar stock</div>
+    <div class="glass" style="padding:18px;">
+      <label for="selProductoStock">Producto</label>
+      <select id="selProductoStock"></select>
+
+      <label for="inpAjuste">Cantidad a ingresar (ej. nueva reposición)</label>
+      <input type="number" id="inpAjuste" min="1" value="1">
+
+      <button class="btn gold" id="btnIngresoStock">Ingresar stock</button>
+
+      <label for="inpCorreccion" style="margin-top:22px;">Corregir stock exacto (opcional)</label>
+      <input type="number" id="inpCorreccion" min="0" placeholder="Dejar vacío si no vas a corregir">
+      <button class="btn secondary" id="btnCorregirStock">Guardar stock exacto</button>
+
+      <div class="msg" id="stockMsg"></div>
+    </div>
+
+    <div class="section-title">Catálogo completo</div>
+    <div id="catalogoList" class="fade-list"></div>
+  </section>
+
+</main>
+
+<div class="navbar">
+  <div class="nav-inner">
+    <button class="nav-btn active" data-view="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      Resumen
+    </button>
+    <button class="nav-btn" data-view="vender">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.4 12.4a2 2 0 002 1.6h8.2a2 2 0 002-1.6L21 8H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/></svg>
+      Vender
+    </button>
+    <button class="nav-btn" data-view="reportes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+      Reportes
+    </button>
+    <button class="nav-btn" data-view="inventario">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+      Inventario
+    </button>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURA AQUÍ la URL de tu Web App de Apps Script
+   (la obtienes al hacer "Implementar > Nueva implementación")
+   ========================================================= */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxuddRnjzXqqOUOV5vJ4qCKCzO1YRFDNfCtIO0g74Cv6PGQKRU9uDhRFMvmxMuVrR89/exec';
+
+let inventario = [];
+let tipoVentaActual = 'Con Factura';
+
+/* ---------- Navegación ---------- */
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+function switchView(name){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelector('.nav-btn[data-view="' + name + '"]').classList.add('active');
+  if(name === 'reportes') cargarReporte();
+}
+
+/* ---------- Helpers de red ---------- */
+async function apiGet(params){
+  const url = API_URL + '?' + new URLSearchParams(params).toString();
+  const res = await fetch(url);
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'Error desconocido');
+  return json.data;
+}
+async function apiPost(body){
+  const res = await fetch(API_URL, { method:'POST', body: JSON.stringify(body) });
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'Error desconocido');
+  return json.data;
+}
+function setStatus(state, text){
+  const dot = document.getElementById('statusDot');
+  dot.className = 'dot' + (state === 'ok' ? ' live' : state === 'err' ? ' err' : '');
+  document.getElementById('statusText').textContent = text;
+}
+function fmtBs(n){ return 'Bs ' + Number(n).toLocaleString('es-BO', {minimumFractionDigits:0, maximumFractionDigits:2}); }
+
+/* ---------- Carga inicial ---------- */
+async function cargarInventario(){
+  try{
+    inventario = await apiGet({ action:'getInventario' });
+    setStatus('ok', 'Conectado');
+    renderStockList();
+    renderSelects();
+    renderCatalogo();
+  }catch(err){
+    setStatus('err', 'Sin conexión');
+    document.getElementById('stockList').innerHTML =
+      '<div class="empty"><div class="empty-icon">⚠️</div>No se pudo conectar a la hoja de cálculo.<br>Revisa la URL configurada en el código.</div>';
+  }
+}
+
+function renderStockList(){
+  const el = document.getElementById('stockList');
+  if(!inventario.length){ el.innerHTML = '<div class="empty">No hay productos cargados.</div>'; return; }
+  el.innerHTML = inventario.map(p => {
+    const stock = Number(p.Stock);
+    const min = Number(p.StockMinimo) || 5;
+    let tag = 'ok', tagText = 'Stock ok';
+    if(stock <= 0){ tag = 'out'; tagText = 'Agotado'; }
+    else if(stock <= min){ tag = 'low'; tagText = 'Stock bajo'; }
+    return `<div class="glass stock-item">
+      <div class="stock-info">
+        <div class="stock-name">${p.Producto}</div>
+        <div class="stock-meta">${p.Espesor} · ${p.Medida}</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-count">${stock}</div>
+        <div class="stock-tag ${tag}">${tagText}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSelects(){
+  const opts = inventario.map(p => `<option value="${p.ID}">${p.Producto} · ${p.Espesor} · ${p.Medida} (stock: ${p.Stock})</option>`).join('');
+  document.getElementById('selProducto').innerHTML = opts;
+  document.getElementById('selProductoStock').innerHTML = opts;
+  actualizarPrecioSugerido();
+}
+
+function renderCatalogo(){
+  const el = document.getElementById('catalogoList');
+  el.innerHTML = inventario.map(p => `
+    <div class="glass stock-item">
+      <div class="stock-info">
+        <div class="stock-name">${p.Producto}</div>
+        <div class="stock-meta">${p.Espesor} · ${p.Medida} · Con factura ${fmtBs(p.PrecioConFactura)} / Sin factura ${fmtBs(p.PrecioSinFactura)}</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-count">${p.Stock}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ---------- Formulario de venta ---------- */
+document.getElementById('tipoCon').addEventListener('click', () => setTipoVenta('Con Factura'));
+document.getElementById('tipoSin').addEventListener('click', () => setTipoVenta('Sin Factura'));
+function setTipoVenta(tipo){
+  tipoVentaActual = tipo;
+  document.getElementById('tipoCon').classList.toggle('active', tipo === 'Con Factura');
+  document.getElementById('tipoSin').classList.toggle('active', tipo === 'Sin Factura');
+  actualizarPrecioSugerido();
+}
+document.getElementById('selProducto').addEventListener('change', actualizarPrecioSugerido);
+function actualizarPrecioSugerido(){
+  const id = document.getElementById('selProducto').value;
+  const p = inventario.find(x => x.ID === id);
+  if(!p) return;
+  const precio = tipoVentaActual === 'Con Factura' ? p.PrecioConFactura : p.PrecioSinFactura;
+  document.getElementById('inpPrecio').value = precio;
+  actualizarTotal();
+}
+['inpCantidad','inpPrecio'].forEach(id => document.getElementById(id).addEventListener('input', actualizarTotal));
+function actualizarTotal(){
+  const cant = Number(document.getElementById('inpCantidad').value) || 0;
+  const precio = Number(document.getElementById('inpPrecio').value) || 0;
+  document.getElementById('totalPreview').textContent = fmtBs(cant * precio);
+}
+
+document.getElementById('btnRegistrarVenta').addEventListener('click', async () => {
+  const btn = document.getElementById('btnRegistrarVenta');
+  const msg = document.getElementById('ventaMsg');
+  const productoId = document.getElementById('selProducto').value;
+  const cantidad = Number(document.getElementById('inpCantidad').value);
+  const precioUnitario = document.getElementById('inpPrecio').value;
+  const notas = document.getElementById('inpNotas').value;
+
+  if(!productoId || !cantidad || cantidad <= 0){
+    showMsg(msg, 'error', 'Revisa el producto y la cantidad.'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Registrando…';
+  try{
+    const data = await apiPost({
+      action:'registrarVenta', productoId, cantidad,
+      tipoVenta: tipoVentaActual, precioUnitario, notas
+    });
+    showMsg(msg, 'ok', `Venta registrada: ${data.cantidad} lámina(s) · ${fmtBs(data.total)}. Stock restante: ${data.stockNuevo}.`);
+    document.getElementById('inpCantidad').value = 1;
+    document.getElementById('inpNotas').value = '';
+    await cargarInventario();
+    await cargarVentasRecientes();
+    actualizarTotal();
+  }catch(err){
+    showMsg(msg, 'error', err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Registrar venta y descontar stock';
+  }
+});
+
+function showMsg(el, type, text){
+  el.textContent = text;
+  el.className = 'msg show ' + type;
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+async function cargarVentasRecientes(){
+  try{
+    const ventas = await apiGet({ action:'getVentas', limite: 15 });
+    const el = document.getElementById('ventasRecientes');
+    if(!ventas.length){ el.innerHTML = '<div class="empty">Sin ventas todavía.</div>'; return; }
+    el.innerHTML = ventas.map(v => `
+      <div class="glass sale-row">
+        <div class="sale-left">
+          <div class="sale-prod">${v.Producto} × ${v.Cantidad}</div>
+          <div class="sale-date">${new Date(v.FechaHora).toLocaleString('es-BO', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})}</div>
+        </div>
+        <div class="sale-right">
+          <div class="sale-total">${fmtBs(v.Total)}</div>
+          <div class="sale-type ${v.TipoVenta === 'Con Factura' ? 'con' : 'sin'}">${v.TipoVenta}</div>
+        </div>
+      </div>`).join('');
+
+    // KPIs de hoy
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const deHoy = ventas.filter(v => new Date(v.FechaHora) >= hoy);
+    document.getElementById('kpiHoyTotal').textContent = fmtBs(deHoy.reduce((a,v)=>a+Number(v.Total),0));
+    document.getElementById('kpiHoyUnidades').textContent = deHoy.reduce((a,v)=>a+Number(v.Cantidad),0);
+  }catch(err){ /* silencioso, el dashboard ya muestra estado de conexión */ }
+}
+
+/* ---------- Ajuste de inventario ---------- */
+document.getElementById('btnIngresoStock').addEventListener('click', async () => {
+  const productoId = document.getElementById('selProductoStock').value;
+  const cantidad = Number(document.getElementById('inpAjuste').value);
+  const msg = document.getElementById('stockMsg');
+  if(!cantidad || cantidad <= 0){ showMsg(msg, 'error', 'Ingresa una cantidad válida.'); return; }
+  try{
+    const data = await apiPost({ action:'ajustarStock', productoId, cantidad, tipo:'ingreso' });
+    showMsg(msg, 'ok', `Stock actualizado: ${data.stockAnterior} → ${data.stockNuevo}`);
+    await cargarInventario();
+  }catch(err){ showMsg(msg, 'error', err.message); }
+});
+
+document.getElementById('btnCorregirStock').addEventListener('click', async () => {
+  const productoId = document.getElementById('selProductoStock').value;
+  const cantidad = document.getElementById('inpCorreccion').value;
+  const msg = document.getElementById('stockMsg');
+  if(cantidad === ''){ showMsg(msg, 'error', 'Ingresa el stock exacto a guardar.'); return; }
+  try{
+    const data = await apiPost({ action:'ajustarStock', productoId, cantidad:Number(cantidad), tipo:'correccion' });
+    showMsg(msg, 'ok', `Stock corregido a ${data.stockNuevo}.`);
+    document.getElementById('inpCorreccion').value = '';
+    await cargarInventario();
+  }catch(err){ showMsg(msg, 'error', err.message); }
+});
+
+/* ---------- Reportes ---------- */
+document.getElementById('btnFiltrar').addEventListener('click', cargarReporte);
+async function cargarReporte(){
+  const desde = document.getElementById('fDesde').value;
+  const hasta = document.getElementById('fHasta').value;
+  try{
+    const rep = await apiGet({ action:'getReporte', desde, hasta });
+    document.getElementById('repCon').textContent = fmtBs(rep.totalConFactura);
+    document.getElementById('repSin').textContent = fmtBs(rep.totalSinFactura);
+    document.getElementById('repTotal').textContent = fmtBs(rep.totalGeneral);
+    const el = document.getElementById('repPorProducto');
+    const entries = Object.entries(rep.porProducto || {});
+    el.innerHTML = entries.length
+      ? entries.map(([nombre, v]) => `<div class="prod-row"><span>${nombre}</span><span class="qty">${v.cantidad} u · ${fmtBs(v.total)}</span></div>`).join('')
+      : '<div class="empty">No hay ventas en este periodo.</div>';
+  }catch(err){ /* estado ya visible arriba */ }
+}
+
+/* ---------- Init ---------- */
+cargarInventario().then(cargarVentasRecientes);
+</script>
+</body>
+</html>
