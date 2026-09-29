@@ -140,6 +140,9 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
       <div class="glass kpi"><div class="kpi-label">Vendido hoy</div><div class="kpi-value red" id="kpiHoyTotal">Bs 0</div></div>
       <div class="glass kpi"><div class="kpi-label">Láminas vendidas</div><div class="kpi-value gold" id="kpiHoyUnidades">0</div></div>
     </div>
+    <div class="section-title">Ventas de hoy</div>
+    <div id="ventasHoy"><div class="empty">Sin ventas hoy.</div></div>
+
     <div class="section-title">Stock disponible</div>
     <div id="stockList"><div class="empty">Cargando inventario…</div></div>
   </section>
@@ -259,7 +262,7 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
 <div id="printArea"></div>
 
 <script>
-/* de tu Web App de Apps Script */
+/* URL de tu Web App de Apps Script */
 const API_URL = 'https://script.google.com/macros/s/AKfycby-TECXij704qwpePyXsLd6HIoIALra-uXcKQSJCSY-E3RoBxb0AKJpSTCFxiFz0KhH/exec';
 
 const $ = id => document.getElementById(id);
@@ -375,6 +378,7 @@ function renderVentas(){
   el.innerHTML = ventas.length ? ventas.map(ventaRow).join('') : '<div class="empty">Sin ventas todavía.</div>';
   const hoy = new Date().toDateString();
   const deHoy = ventas.filter(v => new Date(v.FechaHora).toDateString() === hoy);
+  $('ventasHoy').innerHTML = deHoy.length ? deHoy.map(ventaRow).join('') : '<div class="empty">Sin ventas hoy.</div>';
   $('kpiHoyTotal').textContent = fmtBs(deHoy.reduce((a,v) => a + Number(v.Total||0), 0));
   $('kpiHoyUnidades').textContent = deHoy.reduce((a,v) => a + Number(v.Cantidad||0), 0);
 }
@@ -414,7 +418,15 @@ $('btnRegistrarVenta').addEventListener('click', async () => {
     // Actualización inmediata en pantalla, sin esperar otra descarga
     const p = inventario.find(x => String(x.ID)===String(productoId));
     if(p && data.stockNuevo !== undefined){ p.Stock = data.stockNuevo; cacheSet('acr_inv', inventario); renderInventario(); }
-    showMsg(msg,'ok',`Venta registrada: ${data.cantidad} lámina(s) · ${fmtBs(data.total)}. Stock restante: ${data.stockNuevo}.`);
+    msg.innerHTML = `Venta registrada: ${data.cantidad} lámina(s) · ${fmtBs(data.total)}. Stock restante: ${data.stockNuevo}.<button class="btn secondary sm" id="btnDeshacer" style="margin-top:10px;color:#ff8b90">¿Te equivocaste? Deshacer esta venta</button>`;
+    msg.className = 'msg show ok'; clearTimeout(msg._t); msg._t = setTimeout(() => msg.classList.remove('show'), 15000);
+    $('btnDeshacer').onclick = async function(){
+      this.disabled = true; this.textContent = 'Deshaciendo…';
+      try{
+        await apiPost({action:'eliminarVenta', ventaId:data.ventaId});
+        msg.classList.remove('show'); toast('Venta deshecha y stock devuelto'); await despuesDeCambio();
+      }catch(err){ showMsg(msg,'error',err.message); }
+    };
     $('inpCantidad').value = 1; $('inpNotas').value = ''; actualizarTotal();
     reporteSucio = true;
     apiGet({action:'getVentas', limite:40}).then(v => { ventas = v; cacheSet('acr_ven', v); renderVentas(); }).catch(()=>{});
