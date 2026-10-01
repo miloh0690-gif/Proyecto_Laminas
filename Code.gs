@@ -1,10 +1,13 @@
 /**
  * ============================================================
- *  BACKEND - Control de Inventario y Ventas de Láminas Acrílicas (v3)
+ *  BACKEND - Control de Inventario y Ventas de Láminas Acrílicas (v3.1)
  * ============================================================
- *  Reemplaza TODO el código del editor de Apps Script por este archivo.
- *  Luego: Implementar > Administrar implementaciones > Editar (lápiz)
- *  > Versión: "Nueva versión" > Implementar. (La URL no cambia.)
+ *  PEGADO EN UN SOLO ARCHIVO: borra TODO el contenido del editor y pega esto.
+ *
+ *  Antes de desplegar, CORRE  diagnostico()  desde la lista de funciones de
+ *  arriba. Debe decir "TODO OK". También puedes verificarlo por URL:
+ *    <URL_DEL_WEB_APP>?action=diagnostico
+ *  (sin desplegar todavía sirve, porque doGet lee el código guardado)
  *
  *  Novedades v3:
  *   - ANULAR VENTAS: la venta NO se borra, se marca como "Anulada" con
@@ -71,6 +74,7 @@ function doGet(e) {
         data = getVentas(p.desde, p.hasta, p.limite === undefined || p.limite === '' ? 50 : Number(p.limite));
         break;
       case 'getReporte': data = getReporte(p.desde, p.hasta); break;
+      case 'diagnostico': data = diagnostico(); break;
       default: throw new Error('Acción GET no reconocida: ' + p.action);
     }
     return jsonOut({ ok: true, data: data });
@@ -157,6 +161,52 @@ function valorVenta_(sheet, v, nombre) {
 function estadoVenta_(sheet, v) {
   return String(valorVenta_(sheet, v, 'Estado')).trim().toLowerCase() === 'anulada'
     ? ESTADO_ANULADA : ESTADO_ACTIVA;
+}
+
+/* ---------------- DIAGNÓSTICO ---------------- */
+
+/**
+ * Corre esto desde el editor (función diagnostico) o por URL:
+ *   <URL_DEL_WEB_APP>?action=diagnostico
+ * Dice si el código está pegado completo y si la hoja está bien montada.
+ */
+function diagnostico() {
+  const salida = [];
+  const requisite = [
+    'doGet', 'doPost', 'jsonOut', 'hoja_', 'colIdx_', 'asegurarColumnasVentas_',
+    'armarFila_', 'valorVenta_', 'estadoVenta_', 'getInventario', 'findProductoRow',
+    'crearProducto', 'actualizarProducto', 'ajustarStock', 'moverStock_',
+    'registrarVenta', 'buscarVenta_', 'editarVenta', 'anularVenta',
+    'restaurarVenta', 'eliminarVenta', 'getVentas', 'getReporte'
+  ];
+  const faltan = requisite.filter(n => eval('typeof ' + n) === 'undefined');
+  salida.push('Funciones pegadas: ' + (requisite.length - faltan.length) + '/' + requisite.length +
+    (faltan.length ? '   FALTAN: ' + faltan.join(', ') : '   (completo)'));
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    salida.push('Hoja de cálculo: ' + ss.getName());
+
+    ['Inventario', 'Ventas'].forEach(n => {
+      const s = ss.getSheetByName(n);
+      if (!s) { salida.push('HOJA "' + n + '" NO EXISTE -> corre configurarHojas()'); return; }
+      salida.push('Hoja ' + n + ': ' + s.getLastRow() + ' fila(s) x ' + s.getLastColumn() + ' columna(s)');
+    });
+
+    const ven = ss.getSheetByName('Ventas');
+    if (ven) {
+      salida.push('Cabecera Ventas: ' + ven.getRange(1, 1, 1, ven.getLastColumn()).getValues()[0].join(' | '));
+      COLS_ANULACION.forEach(c => {
+        if (colIdx_(ven, c) === -1) salida.push('FALTA la columna ' + c + ' -> se creará sola al primer uso');
+      });
+    }
+    salida.push('Zona horaria: ' + ss.getSpreadsheetTimeZone());
+    salida.push('TODO OK: el sistema está conectado.');
+  } catch (err) {
+    salida.push('ERROR: ' + err.message);
+  }
+  Logger.log(salida.join('\n'));
+  return salida;
 }
 
 /* ---------------- INVENTARIO ---------------- */

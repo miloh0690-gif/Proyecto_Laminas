@@ -84,9 +84,16 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
 .sale-row.anulada .sale-total{color:#ff8b90;text-decoration:line-through}
 .sale-motivo{font-size:11px;color:#ff8b90;margin-top:2px}
 .sale-actions{display:flex;flex-direction:column;gap:6px;margin-left:10px}
+.sale-actions.three{gap:5px}
+.sale-actions.three .icon-btn{width:30px;height:30px;border-radius:8px}
+.sale-actions.three .icon-btn svg{width:14px;height:14px}
+.alert{padding:13px 14px;border-radius:11px;font-size:13.5px;line-height:1.5;margin:14px 0 0}
+.alert.danger{background:rgba(224,32,44,.12);border:1px solid rgba(224,32,44,.32);color:#ff8b90}
+.alert.ok{background:rgba(62,207,126,.1);border:1px solid rgba(62,207,126,.3);color:var(--ok)}
 .icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--text-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .icon-btn svg{width:16px;height:16px;pointer-events:none}
 .icon-btn.del{color:#ff8b90}
+.icon-btn.warn{color:var(--warn);border-color:rgba(224,167,44,.3)}
 .icon-btn.ok{color:var(--ok);border-color:rgba(62,207,126,.32)}
 .empty{padding:36px 20px;text-align:center;color:var(--text-dim);font-size:14px}
 .report-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
@@ -279,6 +286,15 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
     <button class="btn danger" id="btnConfirmAnular">Sí, anular venta</button>
     <button class="btn secondary" data-close style="margin-top:10px">Cancelar</button>
   </div>
+  <div class="modal" id="mEliminar" style="display:none">
+    <h3>Eliminar venta</h3>
+    <div class="glass" style="padding:14px;font-size:14px" id="eliInfo"></div>
+    <div class="alert danger">Esto <b>borra la venta de la hoja para siempre</b>. No queda registro, no sale en ningún reporte y no se puede deshacer. Las láminas vuelven al stock.</div>
+    <div class="alert ok">Si solo quieres <b>descontarla del total del mes</b> y conservar el registro, usa <b>Anular</b> en su lugar.</div>
+    <div class="msg" id="eliMsg"></div>
+    <button class="btn danger" id="btnConfirmEliminar">Sí, eliminar para siempre</button>
+    <button class="btn secondary" data-close style="margin-top:10px">Cancelar</button>
+  </div>
   <div class="modal" id="mRestaurar" style="display:none">
     <h3>Reactivar venta</h3>
     <div class="glass" style="padding:14px;font-size:14px" id="resInfo"></div>
@@ -317,6 +333,7 @@ const ventasIdx = new Map();
 const ICO_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
 const ICO_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
 const ICO_RESTORE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></svg>';
+const ICO_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 13h12l1-13"/><path d="M9 7V4h6v3"/></svg>';
 
 const esAnulada = v => String(v.Estado || '').trim().toLowerCase() === 'anulada';
 const nombreVenta = v => { const p = inventario.find(x => String(x.ID)===String(v.ProductoID)); return p ? `${v.Producto} · ${p.Medida}` : v.Producto; };
@@ -405,9 +422,10 @@ function ventaRow(v){
   ventasIdx.set(String(v.ID), v);
   const anu = esAnulada(v);
   const acc = v.ID
-    ? `<div class="sale-actions">${anu
+    ? `<div class="sale-actions three">${anu
         ? `<button class="icon-btn ok" data-act="restore" data-f="${esc(v.ID)}" aria-label="Reactivar venta" title="Reactivar venta">${ICO_RESTORE}</button>`
-        : `<button class="icon-btn" data-act="edit" data-f="${esc(v.ID)}" aria-label="Editar venta" title="Editar venta">${ICO_EDIT}</button><button class="icon-btn del" data-act="del" data-f="${esc(v.ID)}" aria-label="Anular venta" title="Anular venta">${ICO_DEL}</button>`}</div>`
+        : `<button class="icon-btn" data-act="edit" data-f="${esc(v.ID)}" aria-label="Editar venta" title="Editar venta">${ICO_EDIT}</button><button class="icon-btn warn" data-act="del" data-f="${esc(v.ID)}" aria-label="Anular venta" title="Anular venta (descuenta del reporte)">${ICO_DEL}</button>`}
+       <button class="icon-btn del" data-act="kill" data-f="${esc(v.ID)}" aria-label="Eliminar venta" title="Eliminar para siempre">${ICO_TRASH}</button></div>`
     : '';
   const motivo = anu && v.MotivoAnulacion ? `<div class="sale-motivo">Anulada: ${esc(v.MotivoAnulacion)}</div>` : '';
   const badge = anu ? '<div class="sale-type anu">Anulada</div>' : `<div class="sale-type ${v.TipoVenta==='Con Factura'?'con':'sin'}">${esc(v.TipoVenta)}</div>`;
@@ -431,6 +449,7 @@ document.addEventListener('click', e => {
   const act = b.dataset.act;
   if(act === 'edit') abrirEditar(v);
   else if(act === 'del') abrirAnular(v);
+  else if(act === 'kill') abrirEliminar(v);
   else if(act === 'restore') abrirRestaurar(v);
 });
 
@@ -481,7 +500,7 @@ $('btnRegistrarVenta').addEventListener('click', async () => {
 });
 
 /* ---------- Modales editar / anular / reactivar ---------- */
-const MODALES = ['mEdit','mAnular','mRestaurar'];
+const MODALES = ['mEdit','mAnular','mRestaurar','mEliminar'];
 function abrirModal(id){
   MODALES.forEach(m => $(m).style.display = m===id ? 'block' : 'none');
   $('modalBg').classList.add('show');
@@ -560,6 +579,25 @@ $('btnConfirmAnular').addEventListener('click', async () => {
   }catch(err){ showMsg($('anuMsg'),'error',err.message); }
   finally{ btn.disabled = false; btn.textContent = 'Sí, anular venta'; }
 });
+/* ---------- Eliminar venta (borrado definitivo) ---------- */
+function abrirEliminar(v){
+  editando = v;
+  $('eliInfo').innerHTML = `<b>${esc(nombreVenta(v))} × ${esc(v.Cantidad)}</b><br><span style="color:var(--text-dim)">${fmtF(v.FechaHora)} · ${esc(v.TipoVenta)}${esAnulada(v)?' · <b style="color:#ff8b90">ya anulada</b>':''}</span><br>Total: <b>${fmtBs(v.Total)}</b>`;
+  $('eliMsg').classList.remove('show');
+  abrirModal('mEliminar');
+}
+$('btnConfirmEliminar').addEventListener('click', async () => {
+  const btn = $('btnConfirmEliminar');
+  if(!editando) return;
+  btn.disabled = true; btn.textContent = 'Eliminando…';
+  try{
+    await apiPost({action:'eliminarVenta', ventaId:editando.ID});
+    cerrarModal(); await despuesDeCambio();
+    toast('Venta eliminada de la hoja');
+  }catch(err){ showMsg($('eliMsg'),'error',err.message); }
+  finally{ btn.disabled = false; btn.textContent = 'Sí, eliminar para siempre'; }
+});
+
 function abrirRestaurar(v){
   editando = v;
   $('resInfo').innerHTML = `<b>${esc(nombreVenta(v))} × ${esc(v.Cantidad)}</b><br><span style="color:var(--text-dim)">${fmtF(v.FechaHora)} · ${esc(v.TipoVenta)}</span><br>Total: <b>${fmtBs(v.Total)}</b>`;
