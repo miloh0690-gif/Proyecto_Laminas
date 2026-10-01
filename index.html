@@ -33,7 +33,9 @@ main{max-width:640px;margin:0 auto;padding:4px 16px 24px}
 .kpi{padding:16px}
 .kpi-label{font-size:11.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em}
 .kpi-value{font-size:30px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
-.kpi-value.red{color:var(--red)}.kpi-value.gold{color:var(--gold)}
+.kpi-value.red{color:var(--red)}.kpi-value.gold{color:var(--gold)}.kpi-value.minus{color:var(--warn)}
+.kpi.wide{grid-column:1/-1}
+.kpi-label .cnt{color:var(--text-dim);opacity:.8}
 .stock-item,.sale-row{content-visibility:auto;contain-intrinsic-size:auto 64px}
 .stock-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;margin-bottom:9px}
 .stock-info{display:flex;flex-direction:column;gap:3px}
@@ -76,15 +78,23 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
 .sale-type{font-size:10px;padding:2px 7px;border-radius:100px;margin-top:3px;display:inline-block}
 .sale-type.con{color:var(--red);background:rgba(224,32,44,.12)}
 .sale-type.sin{color:var(--gold);background:rgba(207,166,70,.12)}
+.sale-type.anu{color:#ff8b90;background:rgba(224,32,44,.2)}
+.sale-row.anulada{border-color:rgba(224,32,44,.34);background:rgba(224,32,44,.05)}
+.sale-row.anulada .sale-prod{text-decoration:line-through;text-decoration-color:rgba(255,139,144,.65)}
+.sale-row.anulada .sale-total{color:#ff8b90;text-decoration:line-through}
+.sale-motivo{font-size:11px;color:#ff8b90;margin-top:2px}
 .sale-actions{display:flex;flex-direction:column;gap:6px;margin-left:10px}
 .icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--text-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .icon-btn svg{width:16px;height:16px;pointer-events:none}
 .icon-btn.del{color:#ff8b90}
+.icon-btn.ok{color:var(--ok);border-color:rgba(62,207,126,.32)}
 .empty{padding:36px 20px;text-align:center;color:var(--text-dim);font-size:14px}
 .report-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .report-card{padding:16px}
 .report-card .label{font-size:12px;color:var(--text-dim)}
 .report-card .val{font-size:24px;font-weight:700;margin-top:4px}
+.report-note{font-size:12.5px;color:var(--text-dim);margin-top:8px;line-height:1.45}
+.prod-row .neg{color:#ff8b90;font-weight:600}
 .prod-row{display:flex;justify-content:space-between;padding:11px 16px;font-size:13.5px;border-bottom:1px solid var(--glass-border)}
 .prod-row:last-child{border-bottom:none}
 .prod-row .qty{color:var(--text-dim)}
@@ -114,6 +124,9 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
   #printArea .sum{display:flex;gap:10px;margin-bottom:14px}
   #printArea .sum div{flex:1;border:1px solid #bbb;border-radius:6px;padding:8px}
   #printArea .sum b{display:block;font-size:15px}
+  #printArea .sub.bruto{margin:-8px 0 12px}
+  #printArea tr.anu{color:#a11}
+  #printArea tr.anu td{text-decoration:line-through;text-decoration-color:rgba(170,17,17,.45)}
   #printArea h2{font-size:14px;margin:16px 0 6px}
   #printArea table{width:100%;border-collapse:collapse}
   #printArea th,#printArea td{border-bottom:1px solid #ddd;padding:5px 6px;text-align:left}
@@ -137,8 +150,9 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
   <section class="view active" id="view-dashboard">
     <div class="section-title">Resumen de hoy</div>
     <div class="kpis">
-      <div class="glass kpi"><div class="kpi-label">Vendido hoy</div><div class="kpi-value red" id="kpiHoyTotal">Bs 0</div></div>
-      <div class="glass kpi"><div class="kpi-label">Láminas vendidas</div><div class="kpi-value gold" id="kpiHoyUnidades">0</div></div>
+      <div class="glass kpi"><div class="kpi-label">Vendido hoy (neto)</div><div class="kpi-value red" id="kpiHoyTotal">Bs 0</div></div>
+      <div class="glass kpi"><div class="kpi-label">Láminas vendidas (neto)</div><div class="kpi-value gold" id="kpiHoyUnidades">0</div></div>
+      <div class="glass kpi wide"><div class="kpi-label">Anulado hoy <span class="cnt" id="kpiHoyAnulN"></span></div><div class="kpi-value minus" id="kpiHoyAnulado">Bs 0</div></div>
     </div>
     <div class="section-title">Ventas de hoy</div>
     <div id="ventasHoy"><div class="empty">Sin ventas hoy.</div></div>
@@ -189,14 +203,20 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
       <div class="glass report-card"><div class="label">Con factura</div><div class="val" id="repCon">Bs 0</div></div>
       <div class="glass report-card"><div class="label">Sin factura</div><div class="val" id="repSin">Bs 0</div></div>
     </div>
+    <div class="report-split">
+      <div class="glass report-card"><div class="label">Ventas anuladas</div><div class="val" id="repAnuladas" style="color:#ff8b90">0</div></div>
+      <div class="glass report-card"><div class="label">Monto anulado</div><div class="val" id="repAnuladoBs" style="color:#ff8b90">Bs 0</div></div>
+    </div>
     <div class="glass report-card" style="margin-top:10px">
-      <div class="label">Total del periodo</div>
+      <div class="label">Total del periodo (neto)</div>
       <div class="val" id="repTotal" style="color:var(--red);font-size:30px">Bs 0</div>
+      <div class="report-note" id="repNotaNeto"></div>
     </div>
     <button class="btn gold" id="btnPDF">Guardar reporte en PDF / Imprimir</button>
-    <div class="section-title">Ventas por producto</div>
+    <div class="section-title">Ventas por producto <span style="text-transform:none;letter-spacing:0">(neto)</span></div>
     <div class="glass" id="repPorProducto"></div>
     <div class="section-title">Detalle de ventas</div>
+    <div class="chips" style="margin:0 0 10px"><button class="btn secondary sm" id="btnToggleAnuladas">Ocultar anuladas</button></div>
     <div id="repDetalle"></div>
   </section>
 
@@ -227,7 +247,7 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
   </div>
 </div>
 
-<!-- Modales: editar / eliminar venta -->
+<!-- Modales: editar / anular / reactivar venta -->
 <div class="modal-bg" id="modalBg">
   <div class="modal" id="mEdit" style="display:none">
     <h3>Editar venta</h3>
@@ -249,12 +269,22 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
     <button class="btn" id="btnGuardarEdit">Guardar cambios</button>
     <button class="btn secondary" data-close style="margin-top:10px">Cancelar</button>
   </div>
-  <div class="modal" id="mDel" style="display:none">
-    <h3>Eliminar venta</h3>
-    <div class="glass" style="padding:14px;font-size:14px" id="delInfo"></div>
-    <p style="color:var(--text-dim);font-size:13.5px;margin:14px 2px 0">La venta se borrará y las láminas vuelven al stock. Esta acción no se puede deshacer.</p>
-    <div class="msg" id="delMsg"></div>
-    <button class="btn danger" id="btnConfirmDel">Sí, eliminar venta</button>
+  <div class="modal" id="mAnular" style="display:none">
+    <h3>Anular venta</h3>
+    <div class="glass" style="padding:14px;font-size:14px" id="anuInfo"></div>
+    <label for="anuMotivo">Motivo de la anulación</label>
+    <input type="text" id="anuMotivo" placeholder="Ej. El cliente devolvió la plancha / error de digitación">
+    <p style="color:var(--text-dim);font-size:13.5px;margin:14px 2px 0">La venta <b style="color:var(--text)">no se borra</b>: queda registrada como <b style="color:#ff8b90">anulada</b> y las láminas vuelven al stock. El monto se descontará del total del reporte del mes.</p>
+    <div class="msg" id="anuMsg"></div>
+    <button class="btn danger" id="btnConfirmAnular">Sí, anular venta</button>
+    <button class="btn secondary" data-close style="margin-top:10px">Cancelar</button>
+  </div>
+  <div class="modal" id="mRestaurar" style="display:none">
+    <h3>Reactivar venta</h3>
+    <div class="glass" style="padding:14px;font-size:14px" id="resInfo"></div>
+    <p style="color:var(--text-dim);font-size:13.5px;margin:14px 2px 0">La venta volverá a contar en el reporte del mes y las láminas se descontarán otra vez del stock. Necesitas tenerlas disponibles.</p>
+    <div class="msg" id="resMsg"></div>
+    <button class="btn" id="btnConfirmRestaurar">Sí, reactivar venta</button>
     <button class="btn secondary" data-close style="margin-top:10px">Cancelar</button>
   </div>
 </div>
@@ -281,11 +311,14 @@ let reporteSucio = true;
 let tipoVentaActual = 'Con Factura';
 let editTipo = 'Con Factura';
 let editando = null;
+let ocultarAnuladas = false;
 const ventasIdx = new Map();
 
 const ICO_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
 const ICO_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
+const ICO_RESTORE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></svg>';
 
+const esAnulada = v => String(v.Estado || '').trim().toLowerCase() === 'anulada';
 const nombreVenta = v => { const p = inventario.find(x => String(x.ID)===String(v.ProductoID)); return p ? `${v.Producto} · ${p.Medida}` : v.Producto; };
 
 /* ---------- Red ---------- */
@@ -367,11 +400,18 @@ function renderCatalogo(){
   $('catalogoList').innerHTML = inventario.map(p => `<div class="glass stock-item"><div class="stock-info"><div class="stock-name">${esc(p.Producto)}</div><div class="stock-meta">${esc(p.Espesor)} · ${esc(p.Medida)} · Con factura ${fmtBs(p.PrecioConFactura)} / Sin factura ${fmtBs(p.PrecioSinFactura)}</div></div><div class="stock-right"><div class="stock-count">${esc(p.Stock)}</div></div></div>`).join('');
 }
 
-/* ---------- Render ventas (con editar / eliminar) ---------- */
+/* ---------- Render ventas (con editar / anular / reactivar) ---------- */
 function ventaRow(v){
   ventasIdx.set(String(v.ID), v);
-  const acc = v.ID ? `<div class="sale-actions"><button class="icon-btn" data-act="edit" data-f="${esc(v.ID)}" aria-label="Editar venta">${ICO_EDIT}</button><button class="icon-btn del" data-act="del" data-f="${esc(v.ID)}" aria-label="Eliminar venta">${ICO_DEL}</button></div>` : '';
-  return `<div class="glass sale-row"><div class="sale-left"><div class="sale-prod">${esc(nombreVenta(v))} × ${esc(v.Cantidad)}</div><div class="sale-date">${fmtF(v.FechaHora)}</div></div><div class="sale-right"><div class="sale-total">${fmtBs(v.Total)}</div><div class="sale-type ${v.TipoVenta==='Con Factura'?'con':'sin'}">${esc(v.TipoVenta)}</div></div>${acc}</div>`;
+  const anu = esAnulada(v);
+  const acc = v.ID
+    ? `<div class="sale-actions">${anu
+        ? `<button class="icon-btn ok" data-act="restore" data-f="${esc(v.ID)}" aria-label="Reactivar venta" title="Reactivar venta">${ICO_RESTORE}</button>`
+        : `<button class="icon-btn" data-act="edit" data-f="${esc(v.ID)}" aria-label="Editar venta" title="Editar venta">${ICO_EDIT}</button><button class="icon-btn del" data-act="del" data-f="${esc(v.ID)}" aria-label="Anular venta" title="Anular venta">${ICO_DEL}</button>`}</div>`
+    : '';
+  const motivo = anu && v.MotivoAnulacion ? `<div class="sale-motivo">Anulada: ${esc(v.MotivoAnulacion)}</div>` : '';
+  const badge = anu ? '<div class="sale-type anu">Anulada</div>' : `<div class="sale-type ${v.TipoVenta==='Con Factura'?'con':'sin'}">${esc(v.TipoVenta)}</div>`;
+  return `<div class="glass sale-row${anu?' anulada':''}"><div class="sale-left"><div class="sale-prod">${esc(nombreVenta(v))} × ${esc(v.Cantidad)}</div><div class="sale-date">${fmtF(v.FechaHora)}</div>${motivo}</div><div class="sale-right"><div class="sale-total">${fmtBs(v.Total)}</div>${badge}</div>${acc}</div>`;
 }
 function renderVentas(){
   const el = $('ventasRecientes');
@@ -379,13 +419,19 @@ function renderVentas(){
   const hoy = new Date().toDateString();
   const deHoy = ventas.filter(v => new Date(v.FechaHora).toDateString() === hoy);
   $('ventasHoy').innerHTML = deHoy.length ? deHoy.map(ventaRow).join('') : '<div class="empty">Sin ventas hoy.</div>';
-  $('kpiHoyTotal').textContent = fmtBs(deHoy.reduce((a,v) => a + Number(v.Total||0), 0));
-  $('kpiHoyUnidades').textContent = deHoy.reduce((a,v) => a + Number(v.Cantidad||0), 0);
+  const s = resumen(deHoy);
+  $('kpiHoyTotal').textContent = fmtBs(s.total);
+  $('kpiHoyUnidades').textContent = s.uni;
+  $('kpiHoyAnulado').textContent = fmtBs(s.anuBs);
+  $('kpiHoyAnulN').textContent = s.anuN ? `(${s.anuN})` : '';
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if(!b) return;
   const v = ventasIdx.get(String(b.dataset.f)); if(!v) return;
-  b.dataset.act === 'edit' ? abrirEditar(v) : abrirEliminar(v);
+  const act = b.dataset.act;
+  if(act === 'edit') abrirEditar(v);
+  else if(act === 'del') abrirAnular(v);
+  else if(act === 'restore') abrirRestaurar(v);
 });
 
 /* ---------- Registrar venta ---------- */
@@ -423,8 +469,8 @@ $('btnRegistrarVenta').addEventListener('click', async () => {
     $('btnDeshacer').onclick = async function(){
       this.disabled = true; this.textContent = 'Deshaciendo…';
       try{
-        await apiPost({action:'eliminarVenta', ventaId:data.ventaId});
-        msg.classList.remove('show'); toast('Venta deshecha y stock devuelto'); await despuesDeCambio();
+        await anularEnBackend(data.ventaId, 'Anulada al instante (venta mal registrada)');
+        msg.classList.remove('show'); toast('Venta anulada y stock devuelto'); await despuesDeCambio();
       }catch(err){ showMsg(msg,'error',err.message); }
     };
     $('inpCantidad').value = 1; $('inpNotas').value = ''; actualizarTotal();
@@ -434,10 +480,10 @@ $('btnRegistrarVenta').addEventListener('click', async () => {
   finally{ btn.disabled = false; btn.textContent = 'Registrar venta y descontar stock'; }
 });
 
-/* ---------- Modales editar / eliminar ---------- */
+/* ---------- Modales editar / anular / reactivar ---------- */
+const MODALES = ['mEdit','mAnular','mRestaurar'];
 function abrirModal(id){
-  $('mEdit').style.display = id==='mEdit' ? 'block' : 'none';
-  $('mDel').style.display = id==='mDel' ? 'block' : 'none';
+  MODALES.forEach(m => $(m).style.display = m===id ? 'block' : 'none');
   $('modalBg').classList.add('show');
 }
 function cerrarModal(){ $('modalBg').classList.remove('show'); editando = null; }
@@ -485,21 +531,50 @@ $('btnGuardarEdit').addEventListener('click', async () => {
   finally{ btn.disabled = false; btn.textContent = 'Guardar cambios'; }
 });
 
-function abrirEliminar(v){
-  editando = v;
-  $('delInfo').innerHTML = `<b>${esc(nombreVenta(v))} × ${esc(v.Cantidad)}</b><br><span style="color:var(--text-dim)">${fmtF(v.FechaHora)} · ${esc(v.TipoVenta)}</span><br>Total: <b>${fmtBs(v.Total)}</b>`;
-  $('delMsg').classList.remove('show');
-  abrirModal('mDel');
-}
-$('btnConfirmDel').addEventListener('click', async () => {
-  const btn = $('btnConfirmDel');
-  if(!editando) return;
-  btn.disabled = true; btn.textContent = 'Eliminando…';
+/* ---------- Anular / reactivar venta ---------- */
+const SIN_SOPORTE = /(no reconoc|desconocid|unknown action|invalid action|unsupported|no soportad|no implementad)/i;
+async function anularEnBackend(ventaId, motivo){
   try{
-    await apiPost({action:'eliminarVenta', ventaId:editando.ID});
-    cerrarModal(); toast('Venta eliminada y stock devuelto'); await despuesDeCambio();
-  }catch(err){ showMsg($('delMsg'),'error',err.message); }
-  finally{ btn.disabled = false; btn.textContent = 'Sí, eliminar venta'; }
+    return await apiPost({action:'anularVenta', ventaId, motivo: motivo || ''});
+  }catch(err){
+    if(!SIN_SOPORTE.test(err.message || '')) throw err;
+    await apiPost({action:'eliminarVenta', ventaId});
+    return {fallback:true};
+  }
+}
+function abrirAnular(v){
+  editando = v;
+  $('anuInfo').innerHTML = `<b>${esc(nombreVenta(v))} × ${esc(v.Cantidad)}</b><br><span style="color:var(--text-dim)">${fmtF(v.FechaHora)} · ${esc(v.TipoVenta)}</span><br>Total: <b>${fmtBs(v.Total)}</b>`;
+  $('anuMotivo').value = '';
+  $('anuMsg').classList.remove('show');
+  abrirModal('mAnular');
+}
+$('btnConfirmAnular').addEventListener('click', async () => {
+  const btn = $('btnConfirmAnular');
+  if(!editando) return;
+  btn.disabled = true; btn.textContent = 'Anulando…';
+  try{
+    const r = await anularEnBackend(editando.ID, $('anuMotivo').value.trim());
+    cerrarModal(); await despuesDeCambio();
+    toast(r && r.fallback ? 'Borrada (el backend aún no soporta anulación)' : 'Venta anulada · stock devuelto');
+  }catch(err){ showMsg($('anuMsg'),'error',err.message); }
+  finally{ btn.disabled = false; btn.textContent = 'Sí, anular venta'; }
+});
+function abrirRestaurar(v){
+  editando = v;
+  $('resInfo').innerHTML = `<b>${esc(nombreVenta(v))} × ${esc(v.Cantidad)}</b><br><span style="color:var(--text-dim)">${fmtF(v.FechaHora)} · ${esc(v.TipoVenta)}</span><br>Total: <b>${fmtBs(v.Total)}</b>`;
+  $('resMsg').classList.remove('show');
+  abrirModal('mRestaurar');
+}
+$('btnConfirmRestaurar').addEventListener('click', async () => {
+  const btn = $('btnConfirmRestaurar');
+  if(!editando) return;
+  btn.disabled = true; btn.textContent = 'Reactivando…';
+  try{
+    await apiPost({action:'restaurarVenta', ventaId:editando.ID});
+    cerrarModal(); toast('Venta reactivada · stock descontado'); await despuesDeCambio();
+  }catch(err){ showMsg($('resMsg'),'error',err.message); }
+  finally{ btn.disabled = false; btn.textContent = 'Sí, reactivar venta'; }
 });
 async function despuesDeCambio(){
   reporteSucio = true;
@@ -534,15 +609,22 @@ function aplicarStock(id, nuevo){
 
 /* ---------- Reportes ---------- */
 function resumen(L){
-  const r = {con:0, sin:0, uni:0, pp:{}};
+  const r = {con:0, sin:0, uni:0, pp:{}, anuBs:0, anuUni:0, anuN:0};
+  const pp = n => r.pp[n] || (r.pp[n] = {cantidad:0, total:0});
   L.forEach(v => {
-    const t = Number(v.Total)||0, q = Number(v.Cantidad)||0;
+    const t = Number(v.Total)||0, q = Number(v.Cantidad)||0, n = nombreVenta(v);
+    if(esAnulada(v)){
+      r.anuBs += t; r.anuUni += q; r.anuN++;
+      pp(n).cantidad -= q; pp(n).total -= t;
+      return;
+    }
     if(v.TipoVenta==='Con Factura') r.con += t; else r.sin += t;
     r.uni += q;
-    const n = nombreVenta(v); const p = r.pp[n] || (r.pp[n] = {cantidad:0, total:0});
-    p.cantidad += q; p.total += t;
+    pp(n).cantidad += q; pp(n).total += t;
   });
-  r.total = r.con + r.sin;
+  r.bruto = r.con + r.sin;
+  r.total = r.bruto - r.anuBs;
+  r.uni -= r.anuUni;
   return r;
 }
 function setRango(r){
@@ -554,6 +636,7 @@ function setRango(r){
 }
 document.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => setRango(b.dataset.r)));
 $('btnFiltrar').addEventListener('click', cargarReporte);
+$('btnToggleAnuladas').addEventListener('click', () => { ocultarAnuladas = !ocultarAnuladas; renderReporte(); });
 
 async function cargarReporte(){
   const btn = $('btnFiltrar'); btn.disabled = true; btn.textContent = 'Cargando…';
@@ -566,12 +649,22 @@ async function cargarReporte(){
 }
 function renderReporte(){
   const s = resumen(reporteVentas);
-  $('repCon').textContent = fmtBs(s.con); $('repSin').textContent = fmtBs(s.sin); $('repTotal').textContent = fmtBs(s.total);
-  const ent = Object.entries(s.pp);
+  $('repCon').textContent = fmtBs(s.con);
+  $('repSin').textContent = fmtBs(s.sin);
+  $('repAnuladas').textContent = s.anuN;
+  $('repAnuladoBs').textContent = fmtBs(s.anuBs);
+  $('repTotal').textContent = fmtBs(s.total);
+  $('repNotaNeto').textContent = s.anuN
+    ? `Bruto ${fmtBs(s.bruto)} − anulado ${fmtBs(s.anuBs)} (${s.anuN} venta${s.anuN===1?'':'s'}) = neto ${fmtBs(s.total)}`
+    : `Sin ventas anuladas en este periodo. Bruto ${fmtBs(s.bruto)}.`;
+  const ent = Object.entries(s.pp).filter(([,v]) => v.cantidad !== 0 || Math.abs(v.total) > 0.004);
   $('repPorProducto').innerHTML = ent.length
-    ? ent.map(([n,v]) => `<div class="prod-row"><span>${esc(n)}</span><span class="qty">${v.cantidad} u · ${fmtBs(v.total)}</span></div>`).join('')
+    ? ent.map(([n,v]) => `<div class="prod-row"><span>${esc(n)}</span><span class="qty${v.total < 0 ? ' neg' : ''}">${v.cantidad} u · ${fmtBs(v.total)}</span></div>`).join('')
     : '<div class="empty">No hay ventas en este periodo.</div>';
-  $('repDetalle').innerHTML = reporteVentas.length ? reporteVentas.map(ventaRow).join('') : '<div class="empty">Sin ventas.</div>';
+  const lista = ocultarAnuladas ? reporteVentas.filter(v => !esAnulada(v)) : reporteVentas;
+  $('repDetalle').innerHTML = lista.length ? lista.map(ventaRow).join('') : '<div class="empty">Sin ventas.</div>';
+  $('btnToggleAnuladas').textContent = ocultarAnuladas ? 'Mostrar anuladas' : 'Ocultar anuladas';
+  $('btnToggleAnuladas').disabled = s.anuN === 0;
 }
 
 /* ---------- PDF / Imprimir ---------- */
@@ -581,13 +674,19 @@ $('btnPDF').addEventListener('click', () => {
   const d = $('fDesde').value, h = $('fHasta').value, s = resumen(L);
   const per = (d||h) ? `${d||'inicio'} al ${h||'hoy'}` : 'Todas las ventas';
   const pu = v => v.PrecioUnitario ?? (Number(v.Total)/Number(v.Cantidad));
-  const filas = L.slice().reverse().map(v => `<tr><td>${fmtF(v.FechaHora)}</td><td>${esc(nombreVenta(v))}</td><td>${esc(v.TipoVenta)}</td><td class="r">${esc(v.Cantidad)}</td><td class="r">${fmtBs(pu(v))}</td><td class="r">${fmtBs(v.Total)}</td><td>${esc(v.Notas ?? '')}</td></tr>`).join('');
-  const prods = Object.entries(s.pp).map(([n,v]) => `<tr><td>${esc(n)}</td><td class="r">${v.cantidad}</td><td class="r">${fmtBs(v.total)}</td></tr>`).join('');
+  const filas = L.slice().reverse().map(v => {
+    const anu = esAnulada(v);
+    const nota = anu ? 'ANULADA' + (v.MotivoAnulacion ? ' — ' + v.MotivoAnulacion : '') : (v.Notas ?? '');
+    return `<tr class="${anu?'anu':''}"><td>${fmtF(v.FechaHora)}</td><td>${esc(nombreVenta(v))}</td><td>${esc(v.TipoVenta)}</td><td class="r">${esc(v.Cantidad)}</td><td class="r">${fmtBs(pu(v))}</td><td class="r">${fmtBs(v.Total)}</td><td>${esc(nota)}</td></tr>`;
+  }).join('');
+  const prods = Object.entries(s.pp).filter(([,v]) => v.cantidad !== 0 || Math.abs(v.total) > 0.004)
+    .map(([n,v]) => `<tr${v.total < 0 ? ' class="anu"' : ''}><td>${esc(n)}</td><td class="r">${v.cantidad}</td><td class="r">${fmtBs(v.total)}</td></tr>`).join('');
   $('printArea').innerHTML = `<h1>Láminas Acrílicas · Reporte de ventas</h1>
     <div class="sub">Periodo: ${per} · Generado: ${fmtF(new Date())}</div>
-    <div class="sum"><div>Con factura<b>${fmtBs(s.con)}</b></div><div>Sin factura<b>${fmtBs(s.sin)}</b></div><div>Láminas vendidas<b>${s.uni}</b></div><div>Total<b>${fmtBs(s.total)}</b></div></div>
-    <h2>Ventas por producto</h2><table><tr><th>Producto</th><th class="r">Cantidad</th><th class="r">Total</th></tr>${prods}</table>
-    <h2>Detalle de ventas</h2><table><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th class="r">Cant.</th><th class="r">P. unit.</th><th class="r">Total</th><th>Notas</th></tr>${filas}</table>`;
+    <div class="sum"><div>Con factura<b>${fmtBs(s.con)}</b></div><div>Sin factura<b>${fmtBs(s.sin)}</b></div><div>Anuladas<b>${s.anuN} · ${fmtBs(s.anuBs)}</b></div><div>Total neto<b>${fmtBs(s.total)}</b></div></div>
+    <div class="sub bruto">Bruto ${fmtBs(s.bruto)} − anulado ${fmtBs(s.anuBs)} = neto ${fmtBs(s.total)} · Láminas netas ${s.uni}</div>
+    <h2>Ventas por producto (neto)</h2><table><tr><th>Producto</th><th class="r">Cantidad</th><th class="r">Total</th></tr>${prods}</table>
+    <h2>Detalle de ventas</h2><table><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th class="r">Cant.</th><th class="r">P. unit.</th><th class="r">Total</th><th>Notas / anulación</th></tr>${filas}</table>`;
   const t = document.title;
   document.title = 'Reporte-ventas-' + (d||'todo') + '_' + (h||iso(new Date()));
   window.print();
