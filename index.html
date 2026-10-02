@@ -10,8 +10,8 @@
 <style>
 :root{--bg:#0c0c0e;--panel:#151517;--glass:rgba(255,255,255,.05);--glass-border:rgba(255,255,255,.09);--red:#e0202c;--gold:#cfa646;--text:#f2f1ee;--text-dim:#9a9a9f;--ok:#3ecf7e;--warn:#e0a72c;--danger:#e0202c;--radius:14px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
-body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,rgba(224,32,44,.10),transparent 60%),var(--bg);background-attachment:fixed;color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;min-height:100%;padding-bottom:84px}
+html,body{min-height:100%}
+body{margin:0;overflow-x:hidden;background:radial-gradient(1200px 600px at 20% -10%,rgba(224,32,44,.10),transparent 60%),var(--bg);background-attachment:fixed;color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;min-height:100%;padding-bottom:84px}
 h1,h2,h3{margin:0}
 .appbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:16px 18px 14px;background:linear-gradient(180deg,rgba(12,12,14,.98),rgba(12,12,14,.9) 75%,rgba(12,12,14,0))}
 .brand{display:flex;align-items:center;gap:10px}
@@ -36,7 +36,6 @@ main{max-width:640px;margin:0 auto;padding:4px 16px 24px}
 .kpi-value.red{color:var(--red)}.kpi-value.gold{color:var(--gold)}.kpi-value.minus{color:var(--warn)}
 .kpi.wide{grid-column:1/-1}
 .kpi-label .cnt{color:var(--text-dim);opacity:.8}
-.stock-item,.sale-row{content-visibility:auto;contain-intrinsic-size:auto 64px}
 .stock-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;margin-bottom:9px}
 .stock-info{display:flex;flex-direction:column;gap:3px}
 .stock-name{font-weight:600;font-size:15px}
@@ -69,11 +68,12 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
 .msg.show{display:block}
 .msg.ok{background:rgba(62,207,126,.12);color:var(--ok);border:1px solid rgba(62,207,126,.25)}
 .msg.error{background:rgba(224,32,44,.12);color:#ff8b90;border:1px solid rgba(224,32,44,.25)}
-.sale-row{padding:12px 12px 12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.sale-row{padding:12px 14px;margin-bottom:8px}
+.sale-main{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .sale-left{display:flex;flex-direction:column;gap:3px;min-width:0}
 .sale-prod{font-size:14px;font-weight:600}
 .sale-date{font-size:11.5px;color:var(--text-dim)}
-.sale-right{text-align:right;margin-left:auto;padding-left:10px}
+.sale-right{text-align:right;margin-left:auto;padding-left:10px;flex-shrink:0}
 .sale-total{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
 .sale-type{font-size:10px;padding:2px 7px;border-radius:100px;margin-top:3px;display:inline-block}
 .sale-type.con{color:var(--red);background:rgba(224,32,44,.12)}
@@ -83,18 +83,15 @@ select:focus,input:focus{outline:2px solid var(--red);border-color:transparent}
 .sale-row.anulada .sale-prod{text-decoration:line-through;text-decoration-color:rgba(255,139,144,.65)}
 .sale-row.anulada .sale-total{color:#ff8b90;text-decoration:line-through}
 .sale-motivo{font-size:11px;color:#ff8b90;margin-top:2px}
-.sale-actions{display:flex;flex-direction:column;gap:6px;margin-left:10px}
-.sale-actions.three{gap:5px}
-.sale-actions.three .icon-btn{width:30px;height:30px;border-radius:8px}
-.sale-actions.three .icon-btn svg{width:14px;height:14px}
+.sale-actions{display:flex;gap:7px;margin-top:11px}
+.mini{flex:1;padding:9px 6px;border-radius:9px;border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--text-dim);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;min-height:36px}
+.mini:active{transform:scale(.98)}
+.mini.warn{color:var(--warn);border-color:rgba(224,167,44,.32);background:rgba(224,167,44,.08)}
+.mini.del{color:#ff8b90;border-color:rgba(224,32,44,.34);background:rgba(224,32,44,.09)}
+.mini.ok{color:var(--ok);border-color:rgba(62,207,126,.34);background:rgba(62,207,126,.09)}
 .alert{padding:13px 14px;border-radius:11px;font-size:13.5px;line-height:1.5;margin:14px 0 0}
 .alert.danger{background:rgba(224,32,44,.12);border:1px solid rgba(224,32,44,.32);color:#ff8b90}
 .alert.ok{background:rgba(62,207,126,.1);border:1px solid rgba(62,207,126,.3);color:var(--ok)}
-.icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--text-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
-.icon-btn svg{width:16px;height:16px;pointer-events:none}
-.icon-btn.del{color:#ff8b90}
-.icon-btn.warn{color:var(--warn);border-color:rgba(224,167,44,.3)}
-.icon-btn.ok{color:var(--ok);border-color:rgba(62,207,126,.32)}
 .empty{padding:36px 20px;text-align:center;color:var(--text-dim);font-size:14px}
 .report-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .report-card{padding:16px}
@@ -330,10 +327,6 @@ let editando = null;
 let ocultarAnuladas = false;
 const ventasIdx = new Map();
 
-const ICO_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
-const ICO_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
-const ICO_RESTORE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></svg>';
-const ICO_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 13h12l1-13"/><path d="M9 7V4h6v3"/></svg>';
 
 const esAnulada = v => String(v.Estado || '').trim().toLowerCase() === 'anulada';
 const nombreVenta = v => { const p = inventario.find(x => String(x.ID)===String(v.ProductoID)); return p ? `${v.Producto} · ${p.Medida}` : v.Producto; };
@@ -422,14 +415,14 @@ function ventaRow(v){
   ventasIdx.set(String(v.ID), v);
   const anu = esAnulada(v);
   const acc = v.ID
-    ? `<div class="sale-actions three">${anu
-        ? `<button class="icon-btn ok" data-act="restore" data-f="${esc(v.ID)}" aria-label="Reactivar venta" title="Reactivar venta">${ICO_RESTORE}</button>`
-        : `<button class="icon-btn" data-act="edit" data-f="${esc(v.ID)}" aria-label="Editar venta" title="Editar venta">${ICO_EDIT}</button><button class="icon-btn warn" data-act="del" data-f="${esc(v.ID)}" aria-label="Anular venta" title="Anular venta (descuenta del reporte)">${ICO_DEL}</button>`}
-       <button class="icon-btn del" data-act="kill" data-f="${esc(v.ID)}" aria-label="Eliminar venta" title="Eliminar para siempre">${ICO_TRASH}</button></div>`
+    ? `<div class="sale-actions">${anu
+        ? `<button class="mini ok" data-act="restore" data-f="${esc(v.ID)}">Reactivar venta</button>`
+        : `<button class="mini" data-act="edit" data-f="${esc(v.ID)}">Editar</button><button class="mini warn" data-act="del" data-f="${esc(v.ID)}">Anular</button>`}
+       <button class="mini del" data-act="kill" data-f="${esc(v.ID)}">Eliminar venta</button></div>`
     : '';
   const motivo = anu && v.MotivoAnulacion ? `<div class="sale-motivo">Anulada: ${esc(v.MotivoAnulacion)}</div>` : '';
   const badge = anu ? '<div class="sale-type anu">Anulada</div>' : `<div class="sale-type ${v.TipoVenta==='Con Factura'?'con':'sin'}">${esc(v.TipoVenta)}</div>`;
-  return `<div class="glass sale-row${anu?' anulada':''}"><div class="sale-left"><div class="sale-prod">${esc(nombreVenta(v))} × ${esc(v.Cantidad)}</div><div class="sale-date">${fmtF(v.FechaHora)}</div>${motivo}</div><div class="sale-right"><div class="sale-total">${fmtBs(v.Total)}</div>${badge}</div>${acc}</div>`;
+  return `<div class="glass sale-row${anu?' anulada':''}"><div class="sale-main"><div class="sale-left"><div class="sale-prod">${esc(nombreVenta(v))} × ${esc(v.Cantidad)}</div><div class="sale-date">${fmtF(v.FechaHora)}</div>${motivo}</div><div class="sale-right"><div class="sale-total">${fmtBs(v.Total)}</div>${badge}</div></div>${acc}</div>`;
 }
 function renderVentas(){
   const el = $('ventasRecientes');
