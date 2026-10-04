@@ -19,6 +19,16 @@
  *   - editarVenta y eliminarVenta ya no rompen el stock en ventas anuladas.
  *   - getReporte ahora devuelve el neto (bruto, anulado y neto).
  *
+ *  Novedades v3.2:
+ *   - Botones Editar / Anular / ELIMINAR: no aparecían porque la hoja "Ventas"
+ *     no tenía la columna ID, y la app solo muestra esas acciones en las ventas
+ *     que traen ID. Ahora la columna ID se crea sola (al final) y se le asigna un
+ *     ID a cada venta que esté sin él, sin borrar ni tocar las ventas viejas.
+ *   - buscarVenta_ ya no asume que el ID está en la columna 1: lo busca por
+ *     cabecera, así que da igual en qué posición quedó.
+ *   - getVentas también crea las columnas que falten, para que al abrir la app
+ *     las ventas ya lleguen con ID y los botones estén visibles.
+ *
  *  Zona horaria: en Apps Script > Configuración del proyecto, verifica que
  *  sea "America/La_Paz" para que los filtros por fecha coincidan con tu día.
  *
@@ -127,8 +137,9 @@ function colIdx_(sheet, nombre) {
   return -1;
 }
 
-/** Agrega Estado / FechaAnulacion / MotivoAnulacion al final si faltan. No toca datos. */
+/** Agrega ID / Estado / FechaAnulacion / MotivoAnulacion al final si faltan. No toca datos. */
 function asegurarColumnasVentas_(sheet) {
+  asegurarColumnaID_(sheet);
   const faltan = COLS_ANULACION.filter(c => colIdx_(sheet, c) === -1);
   if (!faltan.length) return;
 
@@ -139,6 +150,35 @@ function asegurarColumnasVentas_(sheet) {
     sheet.getRange(1, c, 1, 1).setValue(col);
     if (filasDatos > 0) sheet.getRange(2, c, filasDatos, 1).setValue(col === 'Estado' ? ESTADO_ACTIVA : '');
   });
+}
+
+/**
+ * La columna ID es la que permite EDITAR, ANULAR y ELIMINAR una venta: sin ID
+ * la app no muestra esos botones. Si la hoja se creó con una versión anterior
+ * que no la tenía, se agrega al final y se le genera un ID a cada venta que
+ * esté sin él. Las ventas viejas no se borran ni se modifican en nada más.
+ */
+function asegurarColumnaID_(sheet) {
+  if (colIdx_(sheet, 'ID') !== -1) return;
+
+  const c = sheet.getLastColumn() + 1;
+  sheet.getRange(1, c, 1, 1).setValue('ID');
+
+  const last = sheet.getLastRow();
+  if (last < 2) return;
+
+  const fFecha = colIdx_(sheet, 'FechaHora');
+  const filas = sheet.getRange(2, 1, last - 1, sheet.getLastColumn()).getValues();
+  const usados = {};
+  const ids = filas.map((fila, i) => {
+    const f = fFecha > 0 ? fila[fFecha - 1] : null;
+    const base = (f instanceof Date && !isNaN(f.getTime())) ? f.getTime() : (Date.now() + i);
+    let id = 'V' + base;
+    while (usados[id]) id += 'x';
+    usados[id] = true;
+    return [id];
+  });
+  sheet.getRange(2, c, ids.length, 1).setValues(ids);
 }
 
 /** Arma una fila respetando el orden real de las cabeceras de la hoja. */
@@ -174,7 +214,7 @@ function diagnostico() {
   const salida = [];
   const requisite = [
     'doGet', 'doPost', 'jsonOut', 'hoja_', 'colIdx_', 'asegurarColumnasVentas_',
-    'armarFila_', 'valorVenta_', 'estadoVenta_', 'getInventario', 'findProductoRow',
+    'asegurarColumnaID_', 'armarFila_', 'valorVenta_', 'estadoVenta_', 'getInventario', 'findProductoRow',
     'crearProducto', 'actualizarProducto', 'ajustarStock', 'moverStock_',
     'registrarVenta', 'buscarVenta_', 'editarVenta', 'anularVenta',
     'restaurarVenta', 'eliminarVenta', 'getVentas', 'getReporte'
@@ -199,6 +239,9 @@ function diagnostico() {
       COLS_ANULACION.forEach(c => {
         if (colIdx_(ven, c) === -1) salida.push('FALTA la columna ' + c + ' -> se creará sola al primer uso');
       });
+      if (colIdx_(ven, 'ID') === -1) {
+        salida.push('FALTA la columna ID -> se creará sola y las ventas viejas recibirán un ID; sin ID la app NO muestra los botones Editar/Anular/Eliminar');
+      }
     }
     salida.push('Zona horaria: ' + ss.getSpreadsheetTimeZone());
     salida.push('TODO OK: el sistema está conectado.');
@@ -353,9 +396,12 @@ function registrarVenta(body) {
 /** Busca una venta por su ID. Devuelve { fila, valores: fila completa }. */
 function buscarVenta_(venSheet, ventaId) {
   if (!ventaId) throw new Error('Falta el ID de la venta.');
+  asegurarColumnaID_(venSheet);
+
+  const cId = colIdx_(venSheet, 'ID');
   const last = venSheet.getLastRow();
   if (last < 2) throw new Error('No hay ventas registradas.');
-  const ids = venSheet.getRange(2, 1, last - 1, 1).getValues();
+  const ids = venSheet.getRange(2, cId, last - 1, 1).getValues();
   for (let i = 0; i < ids.length; i++) {
     if (String(ids[i][0]) === String(ventaId)) {
       const fila = i + 2;
@@ -510,6 +556,7 @@ function eliminarVenta(body) {
  */
 function getVentas(desde, hasta, limite) {
   const sheet = hoja_(SHEET_VENTAS);
+  asegurarColumnasVentas_(sheet);
   const rows = sheet.getDataRange().getValues();
   const headers = rows.shift();
   const d = desde ? new Date(desde + 'T00:00:00') : null;
